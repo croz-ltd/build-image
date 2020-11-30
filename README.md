@@ -15,7 +15,7 @@ An image ready to be used by any CI (tested on Gitlab CI).
 | kustomize | 2.1.0 | 
 | kubeval | 0.15.0 |
 | go | 1.15.3 |
-| oc | 3.11.0 |
+| oc | 3.11.0 (`use_oc311`), 4 (`use_oc4`) |
 
 ## CA Trust
 
@@ -35,3 +35,9 @@ COPY trust-hostports.txt ./
 
 RUN ./trustcerts.sh
 ```
+
+# OpenShift CLI
+
+There are two versions available, 3.11 and 4. In order to activate the right invoke these commands before usage:
+- `use_oc311` for version 3.11
+- `use_oc4` for version 4

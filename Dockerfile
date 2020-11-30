@@ -55,8 +55,24 @@ FROM golang:${GOLANG_VERSION} as golang
 
 FROM buildah/buildah:959e6da7f52b27f8d7a6e39c884f700bce7ab5cb as buildah
 
+FROM alpine as oc-clients
+RUN apk add dpkg
+
+ENV OC_VERSION "v3.11.0"
+ENV OC_RELEASE "openshift-origin-client-tools-v3.11.0-0cbc58b-linux-64bit"
+
+ADD https://github.com/openshift/origin/releases/download/$OC_VERSION/$OC_RELEASE.tar.gz /opt/oc/release.tar.gz
+RUN apk add --no-cache ca-certificates openssl git bash gettext
+RUN tar --strip-components=1 -xzvf  /opt/oc/release.tar.gz -C /opt/oc/ && \
+    mv /opt/oc/oc /usr/local/bin/oc311 && \
+    rm -rf /opt/oc
+ADD https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/linux/oc.tar.gz /opt/oc/oc.tar.gz
+RUN tar -xzvf /opt/oc/oc.tar.gz && rm /opt/oc/oc.tar.gz && mv oc /usr/local/bin/oc4
+
 FROM frolvlad/alpine-glibc:latest
 ARG GOSU_VERSION=1.11
+RUN apk add --no-cache dpkg bash ca-certificates openssl git gettext
+RUN mv /bin/sh /bin/_sh && ln -s /bin/bash /bin/sh
 
 RUN set -eux; \
 	wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-amd64"; \
@@ -67,11 +83,14 @@ ENV OC_VERSION "v3.11.0"
 ENV OC_RELEASE "openshift-origin-client-tools-v3.11.0-0cbc58b-linux-64bit"
 
 # install the oc client tools
-ADD https://github.com/openshift/origin/releases/download/$OC_VERSION/$OC_RELEASE.tar.gz /opt/oc/release.tar.gz
-RUN apk add --no-cache ca-certificates openssl git bash gettext
-RUN tar --strip-components=1 -xzvf  /opt/oc/release.tar.gz -C /opt/oc/ && \
-    mv /opt/oc/oc /usr/bin/ && \
-    rm -rf /opt/oc
+COPY --from=oc-clients /usr/local/bin/oc311 /usr/local/bin/oc311
+COPY --from=oc-clients /usr/local/bin/oc4 /usr/local/bin/oc4
+RUN mkdir -p /.local/etc/alternatives /.local/var/lib/alternatives && \
+    echo -e '#!/bin/bash\nupdate-alternatives --altdir /.local/etc/alternatives --admindir /.local/var/lib/alternatives "$@"' > /usr/bin/uma && chmod +x /usr/bin/uma && \
+    echo -e '#!/bin/bash\necho 1 | uma --config oc' > /usr/bin/use_oc311 && chmod +x /usr/bin/use_oc311 && \
+    echo -e '#!/bin/bash\necho 2 | uma --config oc' > /usr/bin/use_oc4 && chmod +x /usr/bin/use_oc4
+RUN uma --install /usr/local/bin/oc oc /usr/local/bin/oc311 2 && \
+    uma --install /usr/local/bin/oc oc /usr/local/bin/oc4 1
 
 COPY --from=yq /usr/bin/yq /usr/local/bin/yq
 COPY --from=jq /usr/local/bin/jq /usr/local/bin/jq
