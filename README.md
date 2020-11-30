@@ -1,4 +1,5 @@
 # Build Image
+[![Docker Repository on Quay](https://quay.io/repository/crozltd/build-image/status "Docker Repository on Quay")](https://quay.io/repository/crozltd/build-image)
 
 An image ready to be used by any CI (tested on Gitlab CI).
 
